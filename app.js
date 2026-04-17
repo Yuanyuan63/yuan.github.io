@@ -44,6 +44,8 @@
     previewList: $("previewList"),
   };
 
+  // 需求：每次进入都清空上次作答痕迹（不做本地持久化）。
+  const PERSIST_STATE = false;
   const STORAGE_KEY = "fin5.answers.v1";
 
   /** @type {Array<number|null>} */
@@ -90,6 +92,7 @@
   }
 
   function saveState() {
+    if (!PERSIST_STATE) return;
     try {
       const payload = { answers, currentIndex, ts: Date.now() };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -99,6 +102,14 @@
   }
 
   function loadState() {
+    if (!PERSIST_STATE) {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        // ignore
+      }
+      return;
+    }
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
@@ -150,40 +161,125 @@
     ];
   }
 
+  function updateNavButtons() {
+    els.prevBtn.disabled = currentIndex <= 0;
+
+    const hasAnswer = typeof answers[currentIndex] === "number";
+    const isLast = currentIndex >= questions.length - 1;
+    els.nextBtn.disabled = !hasAnswer;
+    els.nextBtn.textContent = isLast ? "查看结果" : "下一题";
+  }
+
+  function sliderFillPct(value) {
+    // value: [-2, 2] -> [0, 100]
+    const v = clamp(value, -2, 2);
+    return ((v + 2) / 4) * 100;
+  }
+
+  function optionLabelForValue(value) {
+    const opt = scaleOptions().find((o) => o.value === value);
+    return opt ? opt.label : String(value);
+  }
+
   function renderScale(questionId, selectedValue) {
-    const fieldset = document.createElement("fieldset");
-    fieldset.className = "scale";
-    fieldset.setAttribute("aria-label", "选择偏好程度");
+    const wrap = document.createElement("div");
+    wrap.className = "scale scale-slider";
+    wrap.setAttribute("role", "group");
+    wrap.setAttribute("aria-label", "选择偏好程度");
 
-    const name = `scale_${questionId}`;
+    const unanswered = typeof selectedValue !== "number";
+    if (unanswered) wrap.classList.add("scale-unanswered");
 
-    for (const opt of scaleOptions()) {
-      const input = document.createElement("input");
-      input.type = "radio";
-      input.name = name;
-      input.value = String(opt.value);
-      input.checked = selectedValue === opt.value;
-      input.id = `${name}_${String(opt.value)}`;
+    const sliderRow = document.createElement("div");
+    sliderRow.className = "slider-row";
 
-      input.addEventListener("change", () => {
-        answers[currentIndex] = opt.value;
-        saveState();
-        updateProgress();
-        renderQuestion();
-      });
+    const slider = document.createElement("input");
+    slider.type = "range";
+    slider.className = "slider";
+    slider.min = "-2";
+    slider.max = "2";
+    slider.step = "1";
+    slider.id = `range_${questionId}`;
+    slider.name = slider.id;
 
-      const label = document.createElement("label");
-      label.htmlFor = input.id;
+    const initial = unanswered ? 0 : selectedValue;
+    slider.value = String(initial);
+    slider.setAttribute("aria-label", "滑动选择程度（五挡位）");
+    slider.setAttribute("aria-valuetext", optionLabelForValue(initial));
+    slider.style.setProperty("--fill", `${sliderFillPct(initial)}%`);
 
-      const text = document.createElement("span");
-      text.className = "scale-text";
-      text.textContent = opt.label;
-
-      label.append(text);
-      fieldset.append(input, label);
+    const ticks = document.createElement("div");
+    ticks.className = "slider-ticks";
+    ticks.setAttribute("aria-hidden", "true");
+    for (let i = 0; i < 5; i += 1) {
+      const tick = document.createElement("span");
+      tick.className = "slider-tick";
+      ticks.append(tick);
     }
 
-    return fieldset;
+    sliderRow.append(slider, ticks);
+
+    const optsRow = document.createElement("div");
+    optsRow.className = "slider-options";
+
+    /** @type {HTMLButtonElement[]} */
+    const buttons = [];
+
+    function setSelectedButton(value, isAnswered) {
+      for (const btn of buttons) {
+        const v = Number(btn.dataset.value);
+        btn.classList.toggle("is-selected", isAnswered && v === value);
+      }
+    }
+
+    function commit(value) {
+      const v = clamp(Number(value), -2, 2);
+      answers[currentIndex] = v;
+      wrap.classList.remove("scale-unanswered");
+
+      slider.value = String(v);
+      slider.style.setProperty("--fill", `${sliderFillPct(v)}%`);
+      slider.setAttribute("aria-valuetext", optionLabelForValue(v));
+      setSelectedButton(v, true);
+
+      saveState();
+      updateProgress();
+      updateNavButtons();
+    }
+
+    for (const opt of scaleOptions()) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "slider-option";
+      btn.dataset.value = String(opt.value);
+      const text = document.createElement("span");
+      text.className = "slider-option-text";
+      text.textContent = opt.label;
+      btn.append(text);
+      btn.addEventListener("click", () => {
+        commit(opt.value);
+        slider.focus();
+      });
+      buttons.push(btn);
+      optsRow.append(btn);
+    }
+
+    setSelectedButton(initial, !unanswered);
+
+    slider.addEventListener("input", () => {
+      commit(Number(slider.value));
+    });
+
+    // 即便停在“中立”不动，也允许通过触摸/点击滑条来确认选择
+    slider.addEventListener("pointerdown", () => {
+      if (typeof answers[currentIndex] !== "number") commit(Number(slider.value));
+    });
+    slider.addEventListener("keydown", () => {
+      if (typeof answers[currentIndex] !== "number") commit(Number(slider.value));
+    });
+
+    wrap.append(sliderRow, optsRow);
+    return wrap;
   }
 
   function renderQuestion() {
@@ -198,13 +294,7 @@
     els.qScale.innerHTML = "";
     els.qScale.append(renderScale(q.id, answers[currentIndex]));
 
-    els.prevBtn.disabled = currentIndex <= 0;
-
-    const hasAnswer = typeof answers[currentIndex] === "number";
-    const isLast = currentIndex >= questions.length - 1;
-    els.nextBtn.disabled = !hasAnswer;
-    els.nextBtn.textContent = isLast ? "查看结果" : "下一题";
-
+    updateNavButtons();
     updateProgress();
   }
 
