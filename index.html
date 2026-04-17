@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>FIN-5 金融职业匹配测试</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg" aria-hidden="true"></div>
+
+    <main class="container">
+      <header class="header">
+        <div class="badge">FIN-5</div>
+        <h1>金融职业匹配测试</h1>
+        <p class="sub">25 题 · 约 5–8 分钟 · 本地运行（不上传数据）</p>
+      </header>
+
+      <section id="screen-intro" class="screen screen-active">
+        <div class="card">
+          <h2 class="h2">怎么玩</h2>
+          <ul class="list">
+            <li>每题在两种倾向之间选择程度（更偏左/中立/更偏右）。</li>
+            <li>完成后给出你的 FIN-5 类型，以及最匹配的金融职业 Top 3。</li>
+            <li>这不是能力评估，只是偏好画像，用来做方向启发。</li>
+          </ul>
+
+          <div class="cta-row">
+            <button id="startBtn" class="btn btn-primary" type="button">开始测试</button>
+            <button id="previewBtn" class="btn btn-secondary" type="button">先看题目</button>
+          </div>
+        </div>
+
+        <div class="card small">
+          <details>
+            <summary>维度说明</summary>
+            <div id="dimensionLegend" class="legend"></div>
+          </details>
+        </div>
+      </section>
+
+      <section id="screen-quiz" class="screen">
+        <div class="topbar">
+          <button id="backToIntroBtn" class="link" type="button">← 返回</button>
+          <div class="progress">
+            <div class="progress-bar" aria-hidden="true">
+              <div id="progressFill" class="progress-fill"></div>
+            </div>
+            <div class="progress-meta">
+              <span id="progressText">0 / 25</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="q-head">
+            <div class="q-num" id="qNum">第 1 题</div>
+            <div class="q-dim" id="qDim"></div>
+          </div>
+
+          <div class="q-body">
+            <div class="q-side q-left" id="qLeft"></div>
+            <div class="q-scale" id="qScale"></div>
+            <div class="q-side q-right" id="qRight"></div>
+          </div>
+
+          <div class="nav-row">
+            <button id="prevBtn" class="btn btn-secondary" type="button">上一题</button>
+            <button id="nextBtn" class="btn btn-primary" type="button" disabled>下一题</button>
+          </div>
+        </div>
+
+        <div class="card small">
+          <div class="hint">
+            小提示：选“中立”也可以；某个维度接近 0 往往意味着两边都能适应。
+          </div>
+        </div>
+      </section>
+
+      <section id="screen-result" class="screen">
+        <div class="card">
+          <div class="result-head">
+            <h2 class="h2">你的结果</h2>
+            <div class="result-actions">
+              <button id="copyBtn" class="btn btn-secondary" type="button">复制结果</button>
+              <button id="restartBtn" class="btn btn-primary" type="button">再测一次</button>
+            </div>
+          </div>
+
+          <div class="result-grid">
+            <div>
+              <div class="type-line">
+                <div class="label">FIN-5 类型</div>
+                <div class="type" id="typeText">——</div>
+              </div>
+              <div id="dimBars" class="dim-bars"></div>
+            </div>
+
+            <div>
+              <div class="label">职业匹配 Top 3</div>
+              <div id="topMatches" class="match-list"></div>
+              <div class="muted small-note" id="moreMatches"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card small">
+          <div class="muted">
+            免责声明：测试结果仅供职业探索参考，不构成就业/投资/法律建议。
+          </div>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <span>FIN-5 · 静态页面</span>
+      </footer>
+    </main>
+
+    <dialog id="previewDialog" class="dialog">
+      <form method="dialog" class="dialog-form">
+        <div class="dialog-head">
+          <div class="dialog-title">题目预览</div>
+          <button class="icon-btn" value="cancel" aria-label="关闭" type="submit">×</button>
+        </div>
+        <div id="previewList" class="dialog-body"></div>
+        <div class="dialog-foot">
+          <button class="btn btn-primary" value="close" type="submit">知道了</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
+
